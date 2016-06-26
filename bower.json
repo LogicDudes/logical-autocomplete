@@ -1,0 +1,33 @@
+{
+  "name": "logical-autocomplete",
+  "homepage": "https://LogicDudes.github.io/logical-autocomplete",
+  "authors": [
+    "Kevin Ashcraft <kevin@kevashcraft.com>"
+  ],
+  "description": "autocomplete html element created with polymer and webcomponents",
+  "main": "logical-autocomplete.html",
+  "moduleType": [
+    "globals"
+  ],
+  "keywords": [
+    "web-components",
+    "polymer",
+    "autocomplete",
+    "input"
+  ],
+  "license": "MIT",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "polymer": "Polymer/Polymer#~1.2.2",
+    "paper-input": "PolymerElements/paper-input#~1.0.18",
+    "paper-item": "PolymerElements/paper-item#~1.0.7",
+    "paper-menu": "PolymerElements/paper-menu#~1.1.1",
+    "iron-a11y-keys-behavior": "PolymerElements/iron-a11y-keys-behavior#~1.0.8"
+  }
+}

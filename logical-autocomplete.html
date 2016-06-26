@@ -1,0 +1,271 @@
+<link rel="import" href="../paper-input/paper-input.html">
+<link rel="import" href="../paper-item/paper-item.html">
+<link rel="import" href="../paper-menu/paper-menu.html">
+<link rel="import" href="../iron-dropdown/iron-dropdown.html">
+<link rel="import" href="../iron-a11y-keys-behavior/iron-a11y-keys-behavior.html">
+
+<dom-module id="logical-autocomplete">
+<style>
+	:host {
+	display: inline-block;
+	position: relative;
+	text-align: left;
+
+	/* NOTE(cdata): Both values are needed, since some phones require the
+	* value to be `transparent`.
+	*/
+	-webkit-tap-highlight-color: rgba(0,0,0,0);
+	-webkit-tap-highlight-color: transparent;
+
+	--paper-input-container-input: {
+		overflow: hidden;
+		white-space: nowrap;
+		text-overflow: ellipsis;
+		max-width: 100%;
+		box-sizing: border-box;
+	};
+
+	@apply(--paper-dropdown-menu);
+	}
+
+
+	paper-menu-button {
+		display: block;
+		padding: 0;
+	}
+
+	paper-input {
+		@apply(--paper-dropdown-menu-input);
+	}
+
+</style>
+<template>
+	<paper-input
+		id="input"
+		value="{{inputValue}}"
+		label="[[label]]"
+		autofocus="[[autofocus]]"
+		on-focus="onFocus">
+	</paper-input>
+	<iron-dropdown
+		id="dropdown"
+		horizontal-align="left"
+		vertical-align="top"
+		vertical-offset="50"
+		no-animations
+		focus-target="[[AC]]"
+		no-cancel-on-esc-key
+		allow-outside-scroll>
+		<paper-menu class="dropdown-content" attr-for-selected="ACID" id="menu" enable-selection selected="{{selectedItem}}">
+			<template is="dom-repeat" items="[[ACList]]">
+				<paper-item ACID$="[[item.ACID]]">[[item.ACName]]</paper-item>
+			</template>
+		</paper-menu>
+	</iron-dropdown>
+
+	<paper-menu-button id="menuButton"></paper-menu-button>
+</template>
+</dom-module>
+<script>
+	Polymer({
+	is: 'logical-autocomplete',
+
+	behaviors: [
+		Polymer.IronA11yKeysBehavior,
+	],
+
+	properties: {
+
+		AC: {
+			type: Object,
+			value: function() { return this.$.input }
+		},
+
+
+		inputValue: {
+			type: String,
+			notify: true,
+			observer: 'inputValueChanged'
+		},
+
+		autofocus: {
+			type: Boolean,
+			value: false
+		},
+
+		list: {
+			type: String,
+		},
+
+		filter: {
+			type: String,
+		},
+
+		upperCase: {
+			type: Boolean,
+		},
+
+		value: {
+			type: String,
+			observer: 'valueChanged',
+			notify: true,
+		},
+
+		// source: {
+		// 	type: String,
+		// },
+
+		/**
+		 * The label for the dropdown.
+		 */
+		label: {
+			type: String
+		},
+
+
+	},
+
+	listeners: {
+		'keydown': 'onKeyDown'
+	},
+
+	observers: [
+		'selectedItemChanged(selectedItem)',
+		'valueChanged(value)',
+	],
+
+	// attached: function() {
+	// 	// NOTE(cdata): Due to timing, a preselected value in a `IronSelectable`
+	// 	// child will cause an `iron-select` event to fire while the element is
+	// 	// still in a `DocumentFragment`. This has the effect of causing
+	// 	// handlers not to fire. So, we double check this value on attached:
+	// 	var contentElement = this.contentElement;
+	// 	if (contentElement && contentElement.selectedItem) {
+	// 	this._setSelectedItem(contentElement.selectedItem);
+	// 	}
+	// },
+
+	// get AC() {
+	// 	return this.$.input;
+	// },
+
+	get ACOpen() {
+		if(!this.ACList || this.ACList.length == 0) {
+			return false;
+		}
+		if(this.value && this.ACList.length == 1) {
+			if(this.ACList[0].ACID == this.value) {
+				return false;
+			}
+		}
+
+		return true;
+	},
+
+
+	inputValueChanged: function(inputValue) {
+
+		if(this.upperCase) {
+			if(inputValue && inputValue != inputValue.toUpperCase()) {
+				this.inputValue = inputValue.toUpperCase();
+				return;
+			}
+		}
+
+		if(this.inputValue != null && this.inputValue != '') {
+			LogicalApp.jaxson('AutoComplete/ACList', { list: this.list, ACQuery: inputValue, filter: this.filter }, this);
+		}
+	},
+
+
+	onFocus: function() {
+
+		// this.$.dropdown.opened = this.ACListAll && this.ACListAll.length > 1;
+	},
+	
+	
+	onKeyDown: function(event) {
+
+
+		if(this.$.input.focused) {
+
+			if(event.keyCode == 40 || event.keyCode == 13) {
+				if(this.ACList.length > 0) this.$.dropdown.opened = true;
+				this.$.menu.focus();
+			}
+
+		} else {
+
+			// esc focuses input
+			if(event.keyCode == 27) {
+				console.log("ACFOCUS");
+				this.$.input.$.input.focus();
+			}
+
+			if(event.keyCode != 40 && event.keyCode != 38) {
+				console.log("ACFOCUS");
+				this.$.input.$.input.focus();
+			}
+		}
+	},
+	
+
+	selectedItemChanged: function(selectedItem) {
+
+		if(selectedItem && this.ACList) {
+			var options = this.ACList;
+			this.set('value', selectedItem);
+			// this.fire('ac-select');
+
+			for(var i = 0; i < options.length; i++) {
+				if(options[i].ACID == selectedItem) {
+					this.inputValue = options[i].ACName;
+					break;
+				}
+			}
+
+			this.$.dropdown.close();
+			this.selectedItem = false;
+		}
+	},
+
+
+	valueChanged: function(value) {
+
+		/*
+			look for new value in the ACList,
+				if found
+				else get the new item
+		*/
+
+		if(value) {
+			var index;
+			this.valueJustChanged = true;
+			if(this.ACList && this.ACList.some(function(item, i){ index = i; return item.ACID == value})) {
+				this.inputValue = this.ACList[index].ACName;
+			} else {
+				LogicalApp.jaxson('AutoComplete/ACList', { list: this.list, ACID: value }, this);
+			}
+		} else {
+			this.inputValue = '';
+			this.ACListAll = [];
+		}
+
+	},
+
+
+	_jaxson: function(info) {
+	
+		this.ACList = info.ACList;
+		this.$.dropdown.opened = this.ACOpen;
+		if(this.valueJustChanged) {
+			if(this.ACList.length == 1) {
+				this.inputValue = this.ACList[0].ACName;
+			}
+			this.valueJustChanged = false;
+		}
+	},
+	
+	
+	});
+</script>
